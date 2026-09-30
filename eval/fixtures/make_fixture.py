@@ -61,7 +61,64 @@ GROUND_TRUTH = {
 }
 
 
+# A second fixture whose header no synonym in parse/columns.py places, so
+# infer_mapping returns None and the region goes to a model. This is the only
+# way to exercise the model path, and it is deliberately awkward in the way
+# real drawings are: the nodes are called chambers rather than manholes, the
+# diameter is a bore, and nothing says US or DS.
+AWKWARD_HEADER = [
+    "Item",
+    "Chamber Upper",
+    "Chamber Lower",
+    "Bore",
+    "Run Length",
+    "Invert Level Upper",
+    "Invert Level Lower",
+    "Gradient",
+    "Cover Level",
+]
+
+AWKWARD_ROWS = [
+    ["A1", "S1/1", "S1/2", "225Ø - 41.900", "32.40", "", "41.630", "1 in 120", "44.850"],
+    ["A2", "S1/2", "S1/3", "225Ø - 41.630", "28.10", "", "41.400", "1 in 122", "44.600"],
+    ["A3", "S1/3", "S1/4", "300Ø - 41.400", "19.75", "", "41.250", "1 in 132", "44.300"],
+]
+
+AWKWARD_GROUND_TRUTH = {
+    "runs": [
+        {
+            "ref": "A1", "us_node": "S1/1", "ds_node": "S1/2", "diameter_mm": 225,
+            "length_m": 32.40, "us_invert_m": 41.900, "ds_invert_m": 41.630,
+            "stated_gradient_1_in": 120.0,
+        },
+        {
+            "ref": "A2", "us_node": "S1/2", "ds_node": "S1/3", "diameter_mm": 225,
+            "length_m": 28.10, "us_invert_m": 41.630, "ds_invert_m": 41.400,
+            "stated_gradient_1_in": 122.0,
+        },
+        {
+            "ref": "A3", "us_node": "S1/3", "ds_node": "S1/4", "diameter_mm": 300,
+            "length_m": 19.75, "us_invert_m": 41.400, "ds_invert_m": 41.250,
+            "stated_gradient_1_in": 132.0,
+        },
+    ],
+    "expected": {
+        "A1": "upstream invert is fused into the bore cell, not in its own column",
+        "A2": "same, and the run is sound",
+        "A3": "300mm, computed 1 in 131.7 against 1 in 132 stated, within rounding",
+    },
+}
+
+
+def write_awkward_pdf(path: Path) -> Path:
+    return _build(path, AWKWARD_HEADER, AWKWARD_ROWS, "SURFACE WATER DRAINAGE")
+
+
 def write_pdf(path: Path) -> Path:
+    return _build(path, HEADER, ROWS, "SYNTHETIC DRAINAGE LAYOUT, FOUL")
+
+
+def _build(path: Path, header: list[str], rows: list[list[str]], title: str) -> Path:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A3, landscape
     from reportlab.lib.styles import getSampleStyleSheet
@@ -69,12 +126,12 @@ def write_pdf(path: Path) -> Path:
 
     styles = getSampleStyleSheet()
     document = SimpleDocTemplate(str(path), pagesize=landscape(A3))
-    table = Table([HEADER] + ROWS, repeatRows=1)
+    table = Table([header] + rows, repeatRows=1)
     table.setStyle(
         TableStyle(
             [
                 # Ruled lines are what let pdfplumber resolve cells, which is
-                # what keeps this fixture on the deterministic path.
+                # what keeps a fixture on the deterministic path.
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
@@ -84,7 +141,7 @@ def write_pdf(path: Path) -> Path:
     )
     document.build(
         [
-            Paragraph("SYNTHETIC DRAINAGE LAYOUT, FOUL", styles["Heading2"]),
+            Paragraph(title, styles["Heading2"]),
             Paragraph(
                 "Drawn: Invert test fixture. Not a real drawing and not from "
                 "any planning portal.",
@@ -104,16 +161,19 @@ def write_pdf(path: Path) -> Path:
     return path
 
 
-def write_ground_truth(path: Path) -> Path:
-    path.write_text(json.dumps(GROUND_TRUTH, indent=2, sort_keys=True) + "\n")
+def write_ground_truth(path: Path, truth: dict) -> Path:
+    path.write_text(json.dumps(truth, indent=2, sort_keys=True) + "\n")
     return path
 
 
 def main() -> int:
-    pdf = write_pdf(FIXTURES / "synthetic_schedule.pdf")
-    truth = write_ground_truth(FIXTURES / "synthetic_schedule.json")
-    print(f"wrote {pdf}")
-    print(f"wrote {truth}")
+    for path in (
+        write_pdf(FIXTURES / "synthetic_schedule.pdf"),
+        write_ground_truth(FIXTURES / "synthetic_schedule.json", GROUND_TRUTH),
+        write_awkward_pdf(FIXTURES / "awkward_schedule.pdf"),
+        write_ground_truth(FIXTURES / "awkward_schedule.json", AWKWARD_GROUND_TRUTH),
+    ):
+        print(f"wrote {path}")
     return 0
 
 

@@ -9,6 +9,7 @@ could not be read. The distinction matters if this is ever run over a batch.
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ from extract.region import find_schedule, originator
 from parse import columns
 from parse.client import AnthropicClient, DryRun, DryRunClient
 from parse.schema import Schedule
-from parse.validate import AbstainedError, parse_schedule
+from parse.validate import AbstainedError, parse_schedule, sanity
 from report import html, longsection
 from rules.loader import PACK_DIR, load_pack
 
@@ -79,7 +80,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_dotenv(start: Path | None = None) -> None:
+    """Read .env into the environment if it is there. No dependency, no echo.
+
+    A variable already set in the environment always wins, so an exported key
+    is never silently replaced by a stale file. Values are not logged anywhere,
+    because the one variable this exists for is a credential.
+    """
+    here = (start or Path.cwd()).resolve()
+    for directory in (here, *here.parents):
+        candidate = directory / ".env"
+        if not candidate.is_file():
+            continue
+        for line in candidate.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, _, value = line.partition("=")
+            name = name.strip()
+            value = value.strip().strip("'\"")
+            if name and value and name not in os.environ:
+                os.environ[name] = value
+        return
+
+
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
+    load_dotenv(Path(__file__).parent)
     args = build_parser().parse_args(argv)
     if args.command == "usage":
         return _usage()
@@ -192,7 +219,9 @@ def _load_schedule(region, pages, args) -> Schedule:
     # Nothing deterministic fits, so the layout is new and a model earns its
     # keep working the columns out once.
     client = DryRunClient() if args.dry_run else AnthropicClient(model=args.model)
-    schedule = parse_schedule(client, region)
+    schedule, notes = sanity(parse_schedule(client, region))
+    for note in notes:
+        print(f"invert: dropped an impossible value. {note}", file=sys.stderr)
     template_cache.put_parse(key, schedule)
     return schedule
 

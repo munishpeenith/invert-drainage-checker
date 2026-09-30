@@ -61,6 +61,10 @@ Cell shapes that occur and what to do with them.
   including leading zeros and trailing decimals.
 - Gradients appear as "1:150", "1 in 150" or a bare 150. Return the N only.
 - A blank cell is null, not zero.
+- chamber_size_mm is the plan size of the chamber itself, typically 1200mm or
+  larger. It is not the pipe diameter. If the schedule has no chamber size
+  column, every chamber_size_mm is null. Never copy a value from one field into
+  another because the second has no column of its own.
 
 Every pipe run needs a upstream and downstream node reference. If a row has no
 identifiable node references it is not a pipe run, so leave it out.\

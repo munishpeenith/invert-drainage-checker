@@ -1,0 +1,39 @@
+{
+  "expected": {
+    "A1": "upstream invert is fused into the bore cell, not in its own column",
+    "A2": "same, and the run is sound",
+    "A3": "300mm, computed 1 in 131.7 against 1 in 132 stated, within rounding"
+  },
+  "runs": [
+    {
+      "diameter_mm": 225,
+      "ds_invert_m": 41.63,
+      "ds_node": "S1/2",
+      "length_m": 32.4,
+      "ref": "A1",
+      "stated_gradient_1_in": 120.0,
+      "us_invert_m": 41.9,
+      "us_node": "S1/1"
+    },
+    {
+      "diameter_mm": 225,
+      "ds_invert_m": 41.4,
+      "ds_node": "S1/3",
+      "length_m": 28.1,
+      "ref": "A2",
+      "stated_gradient_1_in": 122.0,
+      "us_invert_m": 41.63,
+      "us_node": "S1/2"
+    },
+    {
+      "diameter_mm": 300,
+      "ds_invert_m": 41.25,
+      "ds_node": "S1/4",
+      "length_m": 19.75,
+      "ref": "A3",
+      "stated_gradient_1_in": 132.0,
+      "us_invert_m": 41.4,
+      "us_node": "S1/3"
+    }
+  ]
+}
