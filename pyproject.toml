@@ -32,3 +32,4 @@ packages = ["extract", "parse", "rules", "check", "report", "app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
