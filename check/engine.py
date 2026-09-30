@@ -92,6 +92,7 @@ class Result:
     findings: list[Finding]
     counts: dict[str, int]
     run_verdicts: dict[str, Verdict]
+    run_facts: dict[str, dict[str, Any]]
     regime: Regime
     pack: str
     pack_version: int
@@ -169,10 +170,15 @@ def build_facts(
 
     # Continuity. Where several runs arrive, the outgoing invert must sit at or
     # below the lowest of them, so the lowest is the one to compare against.
+    upstream = network.upstream_of(run)
+    # Never None. It separates "nothing discharges here, so continuity does not
+    # apply" from "something discharges here but its level is missing, so
+    # continuity cannot be checked". Without it the head of every branch reads
+    # as not checked and the distinction that matters is lost.
+    facts["has_upstream_run"] = bool(upstream)
+
     arriving = [
-        feeder.ds_invert_m
-        for feeder in network.upstream_of(run)
-        if feeder.ds_invert_m is not None
+        feeder.ds_invert_m for feeder in upstream if feeder.ds_invert_m is not None
     ]
     if arriving:
         lowest = min(arriving)
@@ -220,9 +226,11 @@ def evaluate(
 
     findings: list[Finding] = []
     run_verdicts: dict[str, Verdict] = {}
+    run_facts: dict[str, dict[str, Any]] = {}
 
     for run in schedule.runs:
         facts = build_facts(run, network, manholes, context)
+        run_facts[run.ref] = facts
         worst: Verdict = "pass"
         for rule in rules:
             finding = _apply(rule, run, facts, pack)
@@ -238,6 +246,7 @@ def evaluate(
         findings=findings,
         counts={verdict: counts.get(verdict, 0) for verdict in _SEVERITY_OF_VERDICT},
         run_verdicts=run_verdicts,
+        run_facts=run_facts,
         regime=regime,
         pack=pack.pack,
         pack_version=pack.version,

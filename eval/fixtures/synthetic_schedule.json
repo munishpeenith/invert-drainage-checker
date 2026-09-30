@@ -1,0 +1,61 @@
+{
+  "expected": {
+    "1.000": "sound, 1 in 150 exactly",
+    "1.001": "1 in 250 computed against 1 in 150 stated, too flat and inconsistent",
+    "1.002": "leaves MH3 at 56.750 above the 56.700 arriving, continuity break",
+    "1.003": "225mm, outside the 150mm gradient rule",
+    "1.004": "no length stated, so no gradient can be computed"
+  },
+  "runs": [
+    {
+      "diameter_mm": 150,
+      "ds_invert_m": 56.8,
+      "ds_node": "MH2",
+      "length_m": 30.0,
+      "ref": "1.000",
+      "stated_gradient_1_in": 150.0,
+      "us_invert_m": 57.0,
+      "us_node": "MH1"
+    },
+    {
+      "diameter_mm": 150,
+      "ds_invert_m": 56.7,
+      "ds_node": "MH3",
+      "length_m": 25.0,
+      "ref": "1.001",
+      "stated_gradient_1_in": 150.0,
+      "us_invert_m": 56.8,
+      "us_node": "MH2"
+    },
+    {
+      "diameter_mm": 150,
+      "ds_invert_m": 56.6,
+      "ds_node": "MH4",
+      "length_m": 20.0,
+      "ref": "1.002",
+      "stated_gradient_1_in": 133.0,
+      "us_invert_m": 56.75,
+      "us_node": "MH3"
+    },
+    {
+      "diameter_mm": 225,
+      "ds_invert_m": 56.45,
+      "ds_node": "MH5",
+      "length_m": 18.0,
+      "ref": "1.003",
+      "stated_gradient_1_in": 120.0,
+      "us_invert_m": 56.6,
+      "us_node": "MH4"
+    },
+    {
+      "diameter_mm": 225,
+      "ds_invert_m": 56.3,
+      "ds_node": "MH6",
+      "length_m": null,
+      "ref": "1.004",
+      "stated_gradient_1_in": 100.0,
+      "us_invert_m": 56.45,
+      "us_node": "MH5"
+    }
+  ]
+}

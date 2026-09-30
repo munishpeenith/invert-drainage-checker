@@ -131,7 +131,13 @@ rules:
 
   - id: internal-invert-continuity
     regime: any
-    applies_when: { has: [us_invert_m, upstream_run_ds_invert_m] }
+    # has_upstream_run gates applicability. The head of a branch has nothing
+    # discharging into it, so the rule does not apply rather than going
+    # unchecked. A run that does have something upstream, but whose level is
+    # missing, still reports as not checked.
+    applies_when:
+      has_upstream_run: true
+      has: [us_invert_m, upstream_run_ds_invert_m]
     assert: { invert_step_m: { lte: 0.0005 } }
     severity: fail
     source: { ref: null, clause: internal consistency }

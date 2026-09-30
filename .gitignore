@@ -21,6 +21,11 @@ htmlcov/
 # Generated reports
 out/
 *.report.html
+_preview.html
+
+# Fixture drawings are generated, not committed. The ground truth beside them
+# is committed, because it is hand-written and is what the scorer measures.
+eval/fixtures/*.pdf
 
 # Never commit a real project drawing. Fixtures and samples are added
 # explicitly, and only from public planning portals.

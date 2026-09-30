@@ -167,9 +167,20 @@ def test_continuity_compares_against_the_lowest_arriving_invert(pack):
     assert finding_for(result, "internal-invert-continuity", "R3").verdict == "fail"
 
 
-def test_the_head_of_a_branch_has_nothing_to_compare_against(pack):
+def test_the_head_of_a_branch_produces_no_continuity_finding(pack):
+    # Nothing discharges into a head run, so the rule does not apply. Reporting
+    # it as not checked would mark every sound branch head as unverified.
     result = run_checks([make_run(ref="R1")], pack)
-    finding = finding_for(result, "internal-invert-continuity", "R1")
+    assert finding_for(result, "internal-invert-continuity", "R1") is None
+
+
+def test_a_missing_upstream_level_is_still_not_checked(pack):
+    # The distinction the head-run case must not erase: something does
+    # discharge here, but its level was not stated.
+    arriving = make_run(ref="R1", us_node="MH1", ds_node="MH2", ds_invert_m=None)
+    leaving = make_run(ref="R2", us_node="MH2", ds_node="MH3")
+    result = run_checks([arriving, leaving], pack)
+    finding = finding_for(result, "internal-invert-continuity", "R2")
     assert finding.verdict == "not_checked"
     assert "upstream_run_ds_invert_m" in finding.missing_fields
 
