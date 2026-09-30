@@ -1,0 +1,235 @@
+# Invert rule pack: foul gravity drainage, UK
+# Every rule names the document and clause it enforces. A rule without a source
+# does not ship. last_verified is what lets the tool tell a user how stale it is.
+
+pack: foul-gravity
+version: 1
+last_verified: 2026-09-30
+
+sources:
+  ADH:
+    document: Approved Document H
+    edition: 2015 edition
+    regime: private
+  DCG:
+    document: Design and Construction Guidance
+    edition: v2.3, Appendix C to the Sewerage Sector Guidance under the Code for
+      Adoption Agreements (Water UK)
+    regime: adoption
+    supersedes: Sewers for Adoption 7th edition (England, 2020)
+
+rules:
+
+  # ---------------------------------------------------------------- gradients
+  - id: grad-min-private-75-lowflow
+    regime: private
+    applies_when: { diameter_mm: 75, peak_flow_l_s: { lt: 1 } }
+    assert: { gradient_1_in: { lte: 40 } }
+    severity: fail
+    source: { ref: ADH, clause: "H1 Table 6" }
+    message: >-
+      75mm foul drain with peak flow below 1 l/s requires a gradient no flatter
+      than 1:40.
+
+  - id: grad-min-private-100-lowflow
+    regime: private
+    applies_when: { diameter_mm: 100, peak_flow_l_s: { lt: 1 } }
+    assert: { gradient_1_in: { lte: 40 } }
+    severity: fail
+    source: { ref: ADH, clause: "H1 Table 6" }
+    message: >-
+      100mm foul drain with peak flow below 1 l/s requires a gradient no flatter
+      than 1:40.
+
+  - id: grad-min-private-75
+    regime: private
+    applies_when: { diameter_mm: 75, peak_flow_l_s: { gte: 1 } }
+    assert: { gradient_1_in: { lte: 80 } }
+    severity: fail
+    source: { ref: ADH, clause: "H1 Table 6" }
+    message: 75mm foul drain requires a gradient no flatter than 1:80.
+
+  - id: grad-min-private-100
+    regime: private
+    applies_when: { diameter_mm: 100, peak_flow_l_s: { gte: 1 }, wc_count: { gte: 1 } }
+    assert: { gradient_1_in: { lte: 80 } }
+    severity: fail
+    source: { ref: ADH, clause: "H1 Table 6" }
+    message: >-
+      100mm foul drain serving at least one WC requires a gradient no flatter
+      than 1:80.
+
+  - id: grad-min-private-150
+    regime: private
+    applies_when: { diameter_mm: 150, peak_flow_l_s: { gte: 1 }, wc_count: { gte: 5 } }
+    assert: { gradient_1_in: { lte: 150 } }
+    severity: fail
+    source: { ref: ADH, clause: "H1 Table 6" }
+    message: >-
+      150mm foul drain serving at least five WCs requires a gradient no flatter
+      than 1:150.
+
+  - id: grad-min-adoption-150
+    regime: adoption
+    applies_when: { diameter_mm: 150, dwellings: { gte: 10 } }
+    assert: { gradient_1_in: { lte: 150 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.9 }
+    message: >-
+      150mm foul sewer serving ten or more dwellings requires a gradient no
+      flatter than 1:150, as the deemed-to-satisfy alternative to demonstrating
+      0.75 m/s at one third design flow.
+
+  - id: grad-min-adoption-lateral-100-wc
+    regime: adoption
+    applies_when: { diameter_mm: 100, asset: lateral_drain, wc_count: { gte: 1 } }
+    assert: { gradient_1_in: { lte: 80 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.9 }
+    message: 100mm foul lateral drain with a WC requires no flatter than 1:80.
+
+  # ---------------------------------------------------------------- diameters
+  - id: dia-min-adoption-foul-small
+    regime: adoption
+    applies_when: { asset: sewer, properties: { lte: 10 } }
+    assert: { diameter_mm: { gte: 100 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.1 }
+    message: Foul sewer serving up to ten properties must be at least 100mm.
+
+  - id: dia-min-adoption-foul-large
+    regime: adoption
+    applies_when: { asset: sewer, properties: { gt: 10 } }
+    assert: { diameter_mm: { gte: 150 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.1 }
+    message: Foul sewer serving more than ten properties must be at least 150mm.
+
+  - id: dia-min-adoption-lateral
+    regime: adoption
+    applies_when: { asset: lateral_drain }
+    assert: { diameter_mm: { gte: 100 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.2 }
+    message: Foul lateral drain must be at least 100mm.
+
+  # ---------------------------------------------------------- internal checks
+  # No external standard. These test the drawing against itself and are the
+  # highest-value checks in the pack, because a drawing can be fully compliant
+  # and still internally contradictory.
+
+  - id: internal-stated-vs-computed
+    regime: any
+    applies_when: { has: [stated_gradient_1_in, computed_gradient_1_in] }
+    assert: { gradient_delta_1_in: { lte: 1.0 } }
+    severity: warn
+    source: { ref: null, clause: internal consistency }
+    message: >-
+      The gradient stated in the schedule disagrees with the gradient derived
+      from the invert levels and the length. One of the three values is wrong
+      and the drawing cannot say which.
+
+  - id: internal-invert-continuity
+    regime: any
+    applies_when: { has: [us_invert_m, upstream_run_ds_invert_m] }
+    assert: { invert_step_m: { lte: 0.0005 } }
+    severity: fail
+    source: { ref: null, clause: internal consistency }
+    message: >-
+      This run leaves the chamber above the invert arriving at it, so flow would
+      have to run uphill. Usually a level edited without updating the next run.
+
+  # ------------------------------------------------------------- hydraulic
+  # Needs design flows. Implement last; ship without if time runs out.
+
+  - id: velocity-min-foul
+    regime: adoption
+    applies_when: { system: foul, has: [design_flow_l_s] }
+    assert: { velocity_m_s_at_third_flow: { gte: 0.75 } }
+    severity: fail
+    source: { ref: DCG, clause: B6.9 }
+    message: Foul sewers require 0.75 m/s at one third of design flow.
+
+  - id: velocity-min-surface
+    regime: adoption
+    applies_when: { system: surface_water, has: [design_flow_l_s] }
+    assert: { velocity_m_s_pipe_full: { gte: 1.0 } }
+    severity: fail
+    source: { ref: DCG, clause: C7.2.3 }
+    message: Surface water sewers require 1.0 m/s at pipe full flow.
+
+  - id: proportional-depth-foul
+    regime: adoption
+    applies_when: { system: foul, has: [design_flow_l_s] }
+    assert: { proportional_depth: { lte: 0.75 } }
+    severity: fail
+    source: { ref: DCG, clause: B3.1.4 }
+    message: >-
+      Foul sewers and lateral drains should run at no more than 75 per cent of
+      pipe full.
+
+  # -------------------------------------------------------------- cover depth
+  # location_class must be supplied by the user. Never infer it.
+
+  - id: cover-min
+    regime: adoption
+    applies_when: { has: [cover_to_crown_m, location_class] }
+    assert:
+      cover_to_crown_m:
+        gte_by_location:
+          garden_or_path: 0.35
+          driveway_weight_restricted: 0.50
+          limited_access_street: 0.90
+          agricultural_or_open_space: 0.90
+          unrestricted_highway: 1.20
+    severity: fail
+    source: { ref: DCG, clause: B5.1.7 }
+    message: Cover to pipe crown is below the minimum for this location class.
+
+  # ----------------------------------------------------------------- chambers
+  - id: mh-spacing-adoption
+    regime: adoption
+    applies_when: { between: [manhole, manhole] }
+    assert: { spacing_m: { lte: 45 } }
+    severity: fail
+    source: { ref: DCG, clause: B5.2.6 }
+    message: Maximum 45m between manholes on an adoptable sewer.
+
+  - id: ic-spacing-adoption
+    regime: adoption
+    applies_when: { between: [inspection_chamber, inspection_chamber] }
+    assert: { spacing_m: { lte: 22.5 } }
+    severity: fail
+    source: { ref: DCG, clause: B5.2.6 }
+    message: Maximum 22.5m between inspection chambers.
+
+  - id: chamber-size-vs-pipe
+    regime: adoption
+    applies_when: { has: [chamber_size_mm, max_connecting_diameter_mm] }
+    assert:
+      chamber_size_mm:
+        gte_by_band:
+          - { pipe_lt: 375, min: 1200 }
+          - { pipe_lte: 450, min: 1350 }
+          - { pipe_lte: 700, min: 1500 }
+          - { pipe_lte: 900, min: 1800 }
+    severity: fail
+    source: { ref: DCG, clause: "Table B1" }
+    message: Chamber is smaller than the minimum for the largest connecting pipe.
+
+  - id: chamber-clear-opening
+    regime: adoption
+    applies_when: { has: [clear_opening_mm] }
+    assert: { clear_opening_mm: { gte: [600, 600] } }
+    severity: fail
+    source: { ref: DCG, clause: B5.2.7 }
+    message: Minimum clear opening is 600 by 600mm.
+
+# ---------------------------------------------------------------------------
+# Never encode as a rule:
+#   - whether a departure from standard is acceptable. The only correct output
+#     is that a formal departure is required.
+#   - exceedance routing, or anything asking where water goes when the system
+#     surcharges. That is design judgement.
+#   - adequacy of CDM residual risk information. Presence is checkable,
+#     sufficiency is not.

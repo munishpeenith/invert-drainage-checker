@@ -1,0 +1,22 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Caches and instrumentation, rebuilt on demand
+*.sqlite
+*.sqlite3
+
+# Generated reports
+out/
+*.report.html
+
+# Never commit a real project drawing. Fixtures and samples are added
+# explicitly, and only from public planning portals.
+samples/*.pdf
+!samples/README.md
