@@ -1,5 +1,11 @@
 .DS_Store
 __pycache__/
+
+# Secrets. The key is read from the environment, never from a tracked file.
+.env
+.env.*
+!.env.example
+
 *.py[cod]
 .venv/
 venv/
