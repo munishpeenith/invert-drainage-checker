@@ -5,6 +5,10 @@ description = "Rule-driven checker for UK drainage drawings"
 requires-python = ">=3.11"
 dependencies = [
     "pdfplumber>=0.11",
+    # Indirect, via pdfminer.six. Pinned because cryptography 49 and later ship
+    # no prebuilt wheel for Intel macOS, so pip falls back to compiling from
+    # source and needs a Rust toolchain. 48 has a universal2 wheel.
+    "cryptography<49",
     "pydantic>=2.7",
     "pyyaml>=6.0",
     "jinja2>=3.1",
