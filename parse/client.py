@@ -152,6 +152,15 @@ class DryRun(Exception):
     """Raised by DryRunClient. Carries nothing: the payload has been printed."""
 
 
+class ModelUnavailableError(Exception):
+    """The model could not be reached. Says which of the likely causes it was.
+
+    Separate from AbstainedError, which means the model answered and the answer
+    could not be validated. Confusing the two sends you looking at the parser
+    when the real problem is a key.
+    """
+
+
 class ModelClient(Protocol):
     def extract_schedule(
         self, region: ScheduleRegion, correction: str | None = None
@@ -202,8 +211,14 @@ class AnthropicClient:
         self.model = model or os.environ.get("INVERT_MODEL", DEFAULT_MODEL)
         # No key passed means the SDK resolves it from the environment, which is
         # where it belongs. Nothing here ever reads a key from a tracked file.
-        self._client = (
-            anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        #
+        # An explicit timeout and retry budget, because the defaults are ten
+        # minutes and two retries: a revoked key made the command hang with no
+        # output rather than saying what was wrong. One batched extraction call
+        # either answers quickly or something is broken.
+        options = {"timeout": 60.0, "max_retries": 1}
+        self._client = anthropic.Anthropic(
+            **({"api_key": api_key} if api_key else {}), **options
         )
 
     def extract_schedule(
@@ -213,21 +228,45 @@ class AnthropicClient:
         if correction:
             user = f"{user}\n\n{correction}"
 
-        response = self._client.messages.create(
-            model=self.model,
-            max_tokens=16000,
-            system=[
-                {
-                    "type": "text",
-                    "text": system,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=[{"role": "user", "content": user}],
-            output_config={
-                "format": {"type": "json_schema", "schema": _SCHEDULE_SCHEMA}
-            },
-        )
+        import anthropic
+
+        try:
+            response = self._client.messages.create(
+                model=self.model,
+                max_tokens=16000,
+                system=[
+                    {
+                        "type": "text",
+                        "text": system,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                messages=[{"role": "user", "content": user}],
+                output_config={
+                    "format": {"type": "json_schema", "schema": _SCHEDULE_SCHEMA}
+                },
+            )
+        except anthropic.AuthenticationError as error:
+            raise ModelUnavailableError(
+                "The API key was rejected. It may have been revoked or it may be "
+                "a stale value in .env. Set a current key and try again, or run "
+                "with --dry-run to see what would be sent without sending it."
+            ) from error
+        except anthropic.PermissionDeniedError as error:
+            raise ModelUnavailableError(
+                f"The key is valid but not permitted to use {self.model}."
+            ) from error
+        except anthropic.RateLimitError as error:
+            raise ModelUnavailableError(
+                "Rate limited. The schedule was not parsed, and nothing was "
+                "guessed in its place."
+            ) from error
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError) as error:
+            raise ModelUnavailableError(
+                f"Could not reach the API: {type(error).__name__}. The "
+                "deterministic path needs no network, so a drawing in a known "
+                "layout will still check."
+            ) from error
 
         text = next(
             (block.text for block in response.content if block.type == "text"), ""

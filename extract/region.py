@@ -77,6 +77,13 @@ def find_schedule(pages: list[Page]) -> list[ScheduleRegion]:
                 for row in table[header_index:]
                 if any(row)
             ]
+            if len(cells) < 2:
+                # Header and nothing under it. A real drawing sheet carries
+                # several tables, and on the Copeland sample the merged banner
+                # spanning two side-by-side schedules scores highest on keywords
+                # while holding no data at all. A region with no body rows is
+                # not a schedule, whatever its header says.
+                continue
             body = [_row_text(row) for row in table[header_index:] if any(row)]
             regions.append(
                 ScheduleRegion(
@@ -89,7 +96,11 @@ def find_schedule(pages: list[Page]) -> list[ScheduleRegion]:
             )
 
     if regions:
-        return sorted(regions, key=lambda r: _score(r.header_row), reverse=True)
+        # Keyword score first, then the region carrying the most rows, so a
+        # fragment never beats the full schedule it was cut from.
+        return sorted(
+            regions, key=lambda r: (_score(r.header_row), len(r.rows)), reverse=True
+        )
 
     # Fallback. No usable table anywhere, so keep the text rows from the header
     # down and let the model work out the columns.

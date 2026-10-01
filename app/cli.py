@@ -19,7 +19,12 @@ from extract import template_cache
 from extract.pdf_text import ScannedPdfError, read_pages
 from extract.region import find_schedule, originator
 from parse import columns
-from parse.client import AnthropicClient, DryRun, DryRunClient
+from parse.client import (
+    AnthropicClient,
+    DryRun,
+    DryRunClient,
+    ModelUnavailableError,
+)
 from parse.schema import Schedule
 from parse.validate import AbstainedError, parse_schedule, sanity
 from report import html, longsection
@@ -147,7 +152,7 @@ def _check(args) -> int:
         schedule = _load_schedule(region, pages, args)
     except DryRun:
         return 0
-    except AbstainedError as error:
+    except (AbstainedError, ModelUnavailableError) as error:
         print(f"invert: {error}", file=sys.stderr)
         return 2
 
